@@ -2,7 +2,7 @@
 // Клиентская логика: бронирование туруслуг
 // ============================================
 
-// ---- Справочники названий ----
+// ---- Справочники ----
 const STATUS_NAMES = {
   'new':       'Новое',
   'confirmed': 'Подтверждено',
@@ -16,101 +16,45 @@ const PRIORITY_NAMES = {
   'low':    'Низкий'
 };
 
-// ---- Ссылки на элементы страницы ----
-const form          = document.getElementById('booking-form');
-const titleInput    = document.getElementById('booking-title');
-const statusSelect  = document.getElementById('booking-status');
-const prioritySelect= document.getElementById('booking-priority');
-const formError     = document.getElementById('form-error');
+// ---- Ссылки на элементы ----
+const form           = document.getElementById('booking-form');
+const titleInput     = document.getElementById('booking-title');
+const statusSelect   = document.getElementById('booking-status');
+const prioritySelect = document.getElementById('booking-priority');
+const formError      = document.getElementById('form-error');
 
-const filterStatus  = document.getElementById('filter-status');
-const searchInput   = document.getElementById('search-input');
-const loadButton    = document.getElementById('load-button');
+const filterStatus   = document.getElementById('filter-status');
+const searchInput    = document.getElementById('search-input');
+const loadButton     = document.getElementById('load-button');
 
-const info          = document.getElementById('info');
-const counter       = document.getElementById('counter');
-const table         = document.getElementById('bookings-table');
-const tbody         = document.getElementById('bookings-body');
+const info           = document.getElementById('info');
+const counter        = document.getElementById('counter');
+const table          = document.getElementById('bookings-table');
+const tbody          = document.getElementById('bookings-body');
 
-// ============================================
-// Шаг 2. Обработка пользовательских событий
-// ============================================
-
-// TODO 2.1 + 2.2: обработка формы
-function onFormSubmit(event) {
-  event.preventDefault(); // 2.1 отменяем перезагрузку
-
-  const title = titleInput.value.trim();
-
-  // 2.2 проверка длины
-  if (title.length < 3) {
-    formError.textContent = 'Название тура должно быть не короче 3 символов';
-    formError.hidden = false;
-    return;
-  }
-  formError.hidden = true;
-
-  // 3.7 добавляем строку в начало таблицы
-  const status = statusSelect.value;
-  const priority = prioritySelect.value;
-
-  const row = createTaskRow({
-    id: 'local-' + Date.now(),
-    title: title,
-    status: status,
-    priority: priority
-  });
-  tbody.insertBefore(row, tbody.firstChild);
-  table.hidden = false;
-
-  // очистка формы
-  titleInput.value = '';
-  statusSelect.value = 'new';
-  prioritySelect.value = 'high';
-
-  updateCounter();
-  showInfo('Бронирование добавлено', 'ok');
-}
-
-// 2.3: обработчики кнопок, фильтра, поиска
-function onLoadClick() {
-  console.log('Нажата кнопка «Загрузить с сервера»');
-  refreshList();
-}
-
-function onFilterChange() {
-  console.log('Фильтр изменён:', filterStatus.value);
-  refreshList();
-}
-
-function onSearchInput() {
-  console.log('Поиск:', searchInput.value);
-  refreshList();
-}
+// Счётчики для защиты от гонки и debounce
+let currentRequestId = 0;
+let searchTimer = null;
 
 // ============================================
 // Шаг 3. Работа с DOM
 // ============================================
 
-// Вспомогательная: создать ячейку
 function addCell(row, text) {
   const cell = document.createElement('td');
-  cell.textContent = text; // безопасно: только текст
+  cell.textContent = text;
   row.appendChild(cell);
   return cell;
 }
 
-// TODO 3.1–3.4: создание строки таблицы
 function createTaskRow(booking) {
   const row = document.createElement('tr');
-  row.setAttribute('data-id', booking.id); // 3.3 атрибут
+  row.setAttribute('data-id', booking.id);
 
-  // 3.1 ячейки с данными
   addCell(row, booking.title);
   addCell(row, STATUS_NAMES[booking.status] || booking.status);
   addCell(row, PRIORITY_NAMES[booking.priority] || booking.priority);
 
-  // 3.2 ячейка с кнопками
   const actionsCell = document.createElement('td');
 
   const doneButton = document.createElement('button');
@@ -125,7 +69,6 @@ function createTaskRow(booking) {
 
   row.appendChild(actionsCell);
 
-  // 3.4 класс done для выполненных (paid/cancelled)
   if (booking.status === 'paid' || booking.status === 'cancelled') {
     row.classList.add('done');
   }
@@ -133,7 +76,6 @@ function createTaskRow(booking) {
   return row;
 }
 
-// TODO 3.5: переключение статуса «Выполнено»
 function onDoneClick(event) {
   const row = event.target.closest('tr');
   row.classList.toggle('done');
@@ -148,19 +90,31 @@ function onDoneClick(event) {
   updateCounter();
 }
 
-// TODO 3.6: удаление строки
-function onDeleteClick(event) {
+async function onDeleteClick(event) {
   const row = event.target.closest('tr');
   const title = row.children[0].textContent;
+  const id = row.getAttribute('data-id');
 
   if (!confirm('Удалить бронирование «' + title + '»?')) return;
 
-  row.remove();
-  updateCounter();
-  showInfo('Бронирование удалено', 'ok');
+  // Локальная запись (ещё не на сервере)
+  if (!id || id.startsWith('local-')) {
+    row.remove();
+    updateCounter();
+    showInfo('Бронирование удалено', 'ok');
+    return;
+  }
+
+  try {
+    await deleteBookingOnServer(id);
+    row.remove();
+    updateCounter();
+    showInfo('Бронирование удалено', 'ok');
+  } catch (error) {
+    showInfo('Не удалось удалить: ' + error.message, 'error');
+  }
 }
 
-// Обновление счётчика
 function updateCounter() {
   const rows = tbody.querySelectorAll('tr');
   const done = tbody.querySelectorAll('tr.done');
@@ -169,7 +123,6 @@ function updateCounter() {
   counter.hidden = rows.length === 0;
 }
 
-// Сообщение о состоянии
 function showInfo(message, type) {
   info.textContent = message;
   info.className = 'info ' + (type || '');
@@ -177,14 +130,67 @@ function showInfo(message, type) {
 }
 
 // ============================================
+// Шаг 2. Обработка событий
+// ============================================
+
+async function onFormSubmit(event) {
+  event.preventDefault();
+
+  const title = titleInput.value.trim();
+  if (title.length < 3) {
+    formError.textContent = 'Название тура должно быть не короче 3 символов';
+    formError.hidden = false;
+    return;
+  }
+  formError.hidden = true;
+
+  const status = statusSelect.value;
+  const priority = prioritySelect.value;
+
+  try {
+    await createBookingOnServer(title, status, priority);
+    await refreshList();
+
+    titleInput.value = '';
+    statusSelect.value = 'new';
+    prioritySelect.value = 'high';
+    showInfo('Бронирование добавлено', 'ok');
+
+  } catch (error) {
+    if (error.status === 422) {
+      formError.textContent = error.message;
+      formError.hidden = false;
+    } else {
+      showInfo('Не удалось добавить: ' + error.message, 'error');
+    }
+  }
+}
+
+function onLoadClick() {
+  console.log('Кнопка «Загрузить»');
+  refreshList();
+}
+
+function onFilterChange() {
+  console.log('Фильтр:', filterStatus.value);
+  refreshList();
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    console.log('Поиск:', searchInput.value);
+    refreshList();
+  }, 300);
+}
+
+// ============================================
 // Шаг 4. Асинхронные запросы
 // ============================================
 
-// TODO 4.1: загрузка данных с сервера
 async function loadBookings() {
   const params = new URLSearchParams();
-
-  if (filterStatus.value) params.append('status', filterStatus.value);
+  if (filterStatus.value)       params.append('status', filterStatus.value);
   if (searchInput.value.trim()) params.append('q', searchInput.value.trim());
 
   const queryString = params.toString();
@@ -197,13 +203,45 @@ async function loadBookings() {
   return await response.json();
 }
 
-// TODO 4.2: загрузка и отображение списка
+async function createBookingOnServer(title, status, priority) {
+  const response = await fetch('/api/bookings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status, priority })
+  });
+
+  if (response.status === 422) {
+    const errorData = await response.json();
+    const error = new Error(errorData.error);
+    error.status = 422;
+    throw error;
+  }
+  if (!response.ok) {
+    throw new Error('Ошибка сервера: ' + response.status);
+  }
+  return await response.json();
+}
+
+async function deleteBookingOnServer(id) {
+  const response = await fetch('/api/bookings/' + id, {
+    method: 'DELETE'
+  });
+  if (!response.ok) {
+    throw new Error('Ошибка сервера: ' + response.status);
+  }
+  return await response.json();
+}
+
 async function refreshList() {
+  const requestId = ++currentRequestId;
+
   showInfo('Загрузка…', 'loading');
   loadButton.disabled = true;
 
   try {
     const data = await loadBookings();
+
+    if (requestId !== currentRequestId) return;
 
     tbody.innerHTML = '';
 
@@ -223,13 +261,16 @@ async function refreshList() {
     showInfo('Загружено записей: ' + data.length, 'ok');
 
   } catch (error) {
+    if (requestId !== currentRequestId) return;
     table.hidden = true;
     counter.hidden = true;
     showInfo('Не удалось загрузить данные: ' + error.message, 'error');
     console.error(error);
 
   } finally {
-    loadButton.disabled = false;
+    if (requestId === currentRequestId) {
+      loadButton.disabled = false;
+    }
   }
 }
 
@@ -242,5 +283,5 @@ loadButton.addEventListener('click', onLoadClick);
 filterStatus.addEventListener('change', onFilterChange);
 searchInput.addEventListener('input', onSearchInput);
 
-// TODO 4.3: автозагрузка при открытии страницы
+// Автозагрузка
 refreshList();
