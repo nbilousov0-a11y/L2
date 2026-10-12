@@ -1,10 +1,9 @@
 // ============================================
 // Движок учебного сервера (mock API)
+// НЕ ИЗМЕНЯТЬ логику, но поддерживает :id и коды ошибок
 // ============================================
 
 (function () {
-  const originalFetch = window.fetch;
-
   let delayMin = 300;
   let delayMax = 800;
   let errorRate = 0;
@@ -69,7 +68,29 @@
       try { body = JSON.parse(options.body); } catch (e) { body = options.body; }
     }
 
-    const handler = ROUTES[key];
+    // Ищем обработчик: точное совпадение или шаблон с :id
+    let handler = ROUTES[key];
+    let params = {};
+
+    if (!handler) {
+      const routeKey = Object.keys(ROUTES).find(r => {
+        if (!r.includes(':')) return false;
+        const [rMethod, rPath] = r.split(' ');
+        if (rMethod !== method) return false;
+        const pattern = new RegExp(
+          '^' + rPath.replace(/:[^/]+/g, '([^/]+)') + '$'
+        );
+        const match = path.match(pattern);
+        if (match) {
+          const paramNames = (rPath.match(/:[^/]+/g) || []).map(s => s.slice(1));
+          paramNames.forEach((name, i) => { params[name] = match[i + 1]; });
+          return true;
+        }
+        return false;
+      });
+      if (routeKey) handler = ROUTES[routeKey];
+    }
+
     if (!handler) {
       return makeResponse(404, {
         error: 'Нет строки в таблице ROUTES: ' + key
@@ -77,10 +98,11 @@
     }
 
     try {
-      const result = handler(query, body);
+      const result = handler(query, body, params);
       return makeResponse(200, result);
     } catch (e) {
-      return makeResponse(500, { error: e.message });
+      const status = e.status || 500;
+      return makeResponse(status, { error: e.message });
     }
   };
 
