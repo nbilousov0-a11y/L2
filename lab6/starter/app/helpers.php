@@ -43,3 +43,4 @@ function notFound(): never
     view('errors/404', ['path' => parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)]);
     exit;
 }
+
