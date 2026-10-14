@@ -5,6 +5,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use const STORAGE_PATH; 
+
 final class BookingRepository
 {
     private string $file;
