@@ -1,0 +1,33 @@
+@startuml
+entity "clients" as clients {
+  * id : SERIAL <<PK>>
+  --
+  * name : VARCHAR(100)
+  phone : VARCHAR(20)
+  email : VARCHAR(100)
+}
+entity "tours" as tours {
+  * id : SERIAL <<PK>>
+  --
+  * title : VARCHAR(200)
+  * country : VARCHAR(100)
+  * price : NUMERIC
+}
+entity "bookings" as bookings {
+  * id : SERIAL <<PK>>
+  --
+  * client_id : INTEGER <<FK>>
+  * tour_id : INTEGER <<FK>>
+  * title : VARCHAR(200)
+  status : VARCHAR(20)
+}
+entity "payments" as payments {
+  * id : SERIAL <<PK>>
+  --
+  * booking_id : INTEGER <<FK>>
+  * amount : NUMERIC
+}
+clients ||--o{ bookings : "1:N"
+tours ||--o{ bookings : "1:N"
+bookings ||--o{ payments : "1:N"
+@enduml
