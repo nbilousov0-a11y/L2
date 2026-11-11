@@ -1,0 +1,62 @@
+[
+    {
+        "id": 1,
+        "tour_id": 1,
+        "title": "Египет, Шарм-эль-Шейх",
+        "status": "confirmed"
+    },
+    {
+        "id": 2,
+        "tour_id": 2,
+        "title": "Турция, Анталия",
+        "status": "paid"
+    },
+    {
+        "id": 3,
+        "tour_id": 3,
+        "title": "Италия, Рим",
+        "status": "new"
+    },
+    {
+        "id": 4,
+        "tour_id": 4,
+        "title": "Испания, Барселона",
+        "status": "cancelled"
+    },
+    {
+        "id": 5,
+        "tour_id": 5,
+        "title": "Таиланд, Пхукет",
+        "status": "confirmed"
+    },
+    {
+        "id": 6,
+        "tour_id": 6,
+        "title": "Греция, Санторини",
+        "status": "new"
+    },
+    {
+        "id": 7,
+        "tour_id": 7,
+        "title": "ОАЭ, Дубай",
+        "status": "paid"
+    },
+    {
+        "title": "Тур в Сочи",
+        "tour_id": 1,
+        "status": "new",
+        "id": 9
+    },
+    {
+        "title": "Тур в Сочи",
+        "tour_id": 1,
+        "status": "new",
+        "id": 10
+    },
+    {
+        "title": "Тур в Сочи",
+        "tour_id": 1,
+        "status": "new",
+        "id": 11
+    }
+]

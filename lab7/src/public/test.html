@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Тест API</title></head>
+<body>
+  <h1>Тестирование API</h1>
+  <button onclick="createBooking()">POST: Создать бронь (Тур в Сочи)</button>
+  <button onclick="deleteBooking()">DELETE: Удалить бронь №8</button>
+  <hr>
+  <pre id="result"></pre>
+
+  <script>
+    async function createBooking() {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title: 'Тур в Сочи', tour_id: 1 })
+      });
+      const data = await res.json();
+      document.getElementById('result').textContent = 'Код ответа: ' + res.status + '\n' + JSON.stringify(data, null, 2);
+    }
+
+    async function deleteBooking() {
+      const res = await fetch('/api/bookings/8', { method: 'DELETE' });
+      document.getElementById('result').textContent = 'Код ответа: ' + res.status;
+    }
+  </script>
+</body>
+</html>
