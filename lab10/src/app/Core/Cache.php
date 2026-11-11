@@ -6,14 +6,16 @@ class Cache
     private static function getCacheDir(): string
     {
         $dir = dirname(__DIR__, 2) . '/cache';
-        if (!is_dir($dir)) mkdir($dir, 0777, true);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
         return $dir;
     }
 
     public static function get(string $key)
     {
         $file = self::getCacheDir() . '/' . md5($key) . '.json';
-        if (!file_exists($file)) return null; // MISS
+        if (!file_exists($file)) return null;
         
         // TTL 60 секунд
         if (time() - filemtime($file) > 60) {
@@ -29,5 +31,12 @@ class Cache
         file_put_contents($file, json_encode($value));
     }
 
-    
+    // ТОТ САМЫЙ МЕТОД ДЛЯ ИНВАЛИДАЦИИ (УДАЛЕНИЯ КЕША)
+    public static function delete(string $key): void
+    {
+        $file = self::getCacheDir() . '/' . md5($key) . '.json';
+        if (file_exists($file)) {
+            unlink($file);
+        }
+    }
 }
